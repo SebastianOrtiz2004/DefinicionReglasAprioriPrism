@@ -1,6 +1,5 @@
 import sys
 import math
-from itertools import combinations
 import pandas as pd
 from typing import List, Dict, Set, Tuple, Any, Optional
 
@@ -87,6 +86,18 @@ class ClasificadorApriori:
         self.diccionario_coberturas[conjunto_items] = cobertura
         return cobertura
 
+    def _generar_combinaciones(self, elementos: list, r: int) -> List[tuple]:
+        """Genera combinaciones de tamaño r a partir de una lista sin usar librerías externas."""
+        if r == 0:
+            return [()]
+        if not elementos:
+            return []
+        primer_elem = elementos[0]
+        resto = elementos[1:]
+        con_primer = [(primer_elem,) + combo for combo in self._generar_combinaciones(resto, r - 1)]
+        sin_primer = self._generar_combinaciones(resto, r)
+        return con_primer + sin_primer
+
     def generar_encabezado(self) -> str:
         """Genera el encabezado inicial con los datos generales del problema."""
         texto = "=" * 90 + "\n"
@@ -165,7 +176,7 @@ class ClasificadorApriori:
             elif k == 3:
                 # Generar candidatos de tamaño 3 a partir de los ítems aprobados de k=1
                 frecuentes_previos = items_aprobados_k1
-                for combo in combinations(frecuentes_previos, 3):
+                for combo in self._generar_combinaciones(frecuentes_previos, 3):
                     conjunto_union = combo[0] | combo[1] | combo[2]
                     if len(conjunto_union) == 3:
                         atributos = [item.split('=')[0] for item in conjunto_union]
@@ -248,7 +259,7 @@ class ClasificadorApriori:
 
                 # Generar todas las particiones disjuntas en Antecedente (A) y Consecuente (B)
                 for r in range(1, len(elementos)):
-                    for tupla_antecedente in combinations(elementos, r):
+                    for tupla_antecedente in self._generar_combinaciones(elementos, r):
                         antecedente = frozenset(tupla_antecedente)
                         consecuente = conjunto_items - antecedente
 
