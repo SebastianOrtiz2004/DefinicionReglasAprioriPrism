@@ -87,16 +87,17 @@ class ClasificadorApriori:
         return cobertura
 
     def _generar_combinaciones(self, elementos: list, r: int) -> List[tuple]:
-        """Genera combinaciones de tamaño r a partir de una lista sin usar librerías externas."""
-        if r == 0:
-            return [()]
-        if not elementos:
-            return []
-        primer_elem = elementos[0]
-        resto = elementos[1:]
-        con_primer = [(primer_elem,) + combo for combo in self._generar_combinaciones(resto, r - 1)]
-        sin_primer = self._generar_combinaciones(resto, r)
-        return con_primer + sin_primer
+        """Genera combinaciones de tamaño r usando bucles 'for' simples y directos."""
+        elem = list(elementos)
+        n = len(elem)
+
+        if r == 1:
+            return [(elem[i],) for i in range(n)]
+        elif r == 2:
+            return [(elem[i], elem[j]) for i in range(n) for j in range(i + 1, n)]
+        elif r == 3:
+            return [(elem[i], elem[j], elem[k]) for i in range(n) for j in range(i + 1, n) for k in range(j + 1, n)]
+        return []
 
     def generar_encabezado(self) -> str:
         """Genera el encabezado inicial con los datos generales del problema."""
