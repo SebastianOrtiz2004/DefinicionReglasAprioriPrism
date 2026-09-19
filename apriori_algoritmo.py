@@ -11,18 +11,12 @@ if hasattr(sys.stderr, 'reconfigure'):
 
 
 class ClasificadorApriori:
-    """
-    Clase principal en español para la ejecución formal del Algoritmo APRIORI.
-    """
 
-    def __init__(self, ruta_archivo: str, soporte_minimo_pct: float = 0.70, confianza_minima_base: float = 0.85, confianza_estricta: float = 0.90):
-        """
-        Inicializa el clasificador APRIORI con los hiperparámetros.
-        """
+    def __init__(self, ruta_archivo: str, soporte_minimo_pct: float = 0.70, confianza_minima: float = 0.85):
+
         self.ruta_archivo = ruta_archivo
         self.soporte_minimo_pct = soporte_minimo_pct
-        self.confianza_minima_base = confianza_minima_base
-        self.confianza_estricta = confianza_estricta
+        self.confianza_minima = confianza_minima
 
         self.df = self._cargar_csv(ruta_archivo)
         self.N = len(self.df)
@@ -107,7 +101,7 @@ class ClasificadorApriori:
         texto += f" Archivo cargado:                    '{self.ruta_archivo}'\n"
         texto += f" Total de Transacciones (N):          {self.N}\n"
         texto += f" Soporte Mínimo:                     {self.soporte_minimo_pct:.2f}\n"
-        texto += f" Confianza Mínima Base:              {self.confianza_minima_base:.2f}\n"
+        texto += f" Confianza Mínima:                   {self.confianza_minima:.2f}\n"
         texto += f" Ítems Atributo=Valor Disponibles:    {len(self.series_atributos)} pares ({len(self.columnas_atributos)} atributos x 2 valores)\n"
         texto += "=" * 90 + "\n"
         return texto
@@ -267,8 +261,7 @@ class ClasificadorApriori:
                         cobertura_antecedente = self._calcular_cobertura_itemset(antecedente)
                         confianza = cobertura_conjunta / cobertura_antecedente if cobertura_antecedente > 0 else 0.0
 
-                        aprobado_base = confianza >= self.confianza_minima_base
-                        aprobado_estricto = confianza >= self.confianza_estricta
+                        aprobado = confianza >= self.confianza_minima
 
                         # Texto descriptivo de la regla
                         texto_antecedente = " AND ".join(sorted(list(antecedente)))
@@ -286,9 +279,8 @@ class ClasificadorApriori:
                             'cobertura_antecedente': cobertura_antecedente,
                             'confianza': confianza,
                             'soporte_regla': cobertura_conjunta / self.N,
-                            'aprobado_base': aprobado_base,
-                            'aprobado_estricto': aprobado_estricto,
-                            'estado_base': "VÁLIDA" if aprobado_base else "DESCARTADA"
+                            'aprobado': aprobado,
+                            'estado': "VÁLIDA" if aprobado else "DESCARTADA"
                         })
 
         # Ordenar reglas por confianza descendente y luego por cobertura conjunta descendente
@@ -298,15 +290,15 @@ class ClasificadorApriori:
             reverse=True
         )
 
-        reglas_validas_base = [r for r in self.reglas_evaluadas if r['aprobado_base']]
-        reglas_descartadas_base = [r for r in self.reglas_evaluadas if not r['aprobado_base']]
+        reglas_validas = [r for r in self.reglas_evaluadas if r['aprobado']]
+        reglas_descartadas = [r for r in self.reglas_evaluadas if not r['aprobado']]
 
         texto = "\n" + "=" * 90 + "\n"
         texto += "         FASE 2: EXTRACCIÓN Y EVALUACIÓN DE REGLAS DE ASOCIACIÓN\n"
         texto += "=" * 90 + "\n"
         texto += f" Total de Reglas Generadas y Evaluadas: {len(self.reglas_evaluadas)}\n"
-        texto += f" Reglas Válidas (Confianza >= {self.confianza_minima_base:.2f}): {len(reglas_validas_base)}\n"
-        texto += f" Reglas Descartadas:                    {len(reglas_descartadas_base)}\n"
+        texto += f" Reglas Válidas (Confianza >= {self.confianza_minima:.2f}): {len(reglas_validas)}\n"
+        texto += f" Reglas Descartadas:                    {len(reglas_descartadas)}\n"
         texto += "=" * 90 + "\n"
 
         if self.reglas_evaluadas:
@@ -314,15 +306,15 @@ class ClasificadorApriori:
             ancho_columna = max(55, longitud_maxima + 2)
             ancho_tabla = ancho_columna + 55
 
-            encabezado_tabla = f"\n>>> TABLA DE EVALUACIÓN DE REGLAS DE ASOCIACIÓN (Confianza Mínima = {self.confianza_minima_base:.2f})\n"
+            encabezado_tabla = f"\n>>> TABLA DE EVALUACIÓN DE REGLAS DE ASOCIACIÓN (Confianza Mínima = {self.confianza_minima:.2f})\n"
             encabezado_tabla += "-" * ancho_tabla + "\n"
             encabezado_tabla += f"{'#':<3} | {'Regla de Asociación (A -> B)':<{ancho_columna}} | {'|A&B|':<6} | {'|A|':<6} | {'Confianza':<10} | {'Veredicto':<12} |\n"
             encabezado_tabla += "-" * ancho_tabla + "\n"
 
             cuerpo = ""
             for idx, r in enumerate(self.reglas_evaluadas, 1):
-                marca = " [X]" if r['aprobado_base'] else "    "
-                cuerpo += f"{idx:<3}{marca}| {r['texto_regla']:<{ancho_columna}} | {r['cobertura_conjunta']:<6} | {r['cobertura_antecedente']:<6} | {r['confianza']:<10.6f} | {r['estado_base']:<12} |\n"
+                marca = " [X]" if r['aprobado'] else "    "
+                cuerpo += f"{idx:<3}{marca}| {r['texto_regla']:<{ancho_columna}} | {r['cobertura_conjunta']:<6} | {r['cobertura_antecedente']:<6} | {r['confianza']:<10.6f} | {r['estado']:<12} |\n"
 
             pie = "-" * ancho_tabla + "\n"
             texto += encabezado_tabla + cuerpo + pie
@@ -331,9 +323,9 @@ class ClasificadorApriori:
 
     def ejecutar_resumen(self) -> str:
         """MEJORES REGLAS DESCUBIERTAS."""
-        reglas_validas_base = [r for r in self.reglas_evaluadas if r['aprobado_base']]
-        reglas_perfectas = [r for r in reglas_validas_base if round(r['confianza'], 6) == 1.0]
-        reglas_altas = [r for r in reglas_validas_base if round(r['confianza'], 6) < 1.0]
+        reglas_validas = [r for r in self.reglas_evaluadas if r['aprobado']]
+        reglas_perfectas = [r for r in reglas_validas if round(r['confianza'], 6) == 1.0]
+        reglas_altas = [r for r in reglas_validas if round(r['confianza'], 6) < 1.0]
 
         texto = "\n" + "=" * 90 + "\n"
         texto += "                 MEJORES REGLAS DESCUBIERTAS Y RESUMEN FINAL\n"
@@ -346,7 +338,7 @@ class ClasificadorApriori:
                 texto += f"     -> Cobertura Conjunta (|A & B|): {r['cobertura_conjunta']} | Cobertura Antecedente (|A|): {r['cobertura_antecedente']} | Confianza: 1.000000\n"
 
         if reglas_altas:
-            texto += f"\n REGLAS DE ALTA CONFIANZA ({self.confianza_minima_base:.2f} <= Confianza < 1.0) ({len(reglas_altas)}):\n"
+            texto += f"\n REGLAS DE ALTA CONFIANZA ({self.confianza_minima:.2f} <= Confianza < 1.0) ({len(reglas_altas)}):\n"
             for r in reglas_altas:
                 texto += f"   - {r['texto_regla']}\n"
                 texto += f"     -> Cobertura Conjunta (|A & B|): {r['cobertura_conjunta']} | Cobertura Antecedente (|A|): {r['cobertura_antecedente']} | Confianza: {r['confianza']:.6f}\n"
@@ -379,7 +371,6 @@ if __name__ == "__main__":
     clasificador = ClasificadorApriori(
         ruta_archivo=archivo_csv,
         soporte_minimo_pct=0.70,
-        confianza_minima_base=0.85,
-        confianza_estricta=0.90
+        confianza_minima=0.85
     )
     clasificador.ejecutar_todo()
